@@ -1,6 +1,3 @@
-# qnx_raspi_gpio_resmgr
-QNX Resource Manager for Raspberry Pi 4 (BCM2711) GPIO. Provides safe pin allocation, direction and mode configuration, and fast read/write access via memory-mapped registers. Designed for embedded and real-time applications needing low-level, efficient GPIO control.
-
 # Raspberry Pi GPIO for QNX (BCM2711) — `raspi_gpio_resmgr`
 
 A minimal **QNX utility** to configure and drive Raspberry Pi 4 (BCM2711) GPIO pins via **memory‑mapped I/O**. This implementation supports **GPIO pins 2–27 only**, with **basic input/output** direction and **digital high/low** control.
@@ -84,8 +81,3 @@ raspi_gpio_resmgr set <pin> <op|ip> <o1|o0|nc>
   ```
 
 ---
-
-If you later expand this into a full QNX resource manager (device node), consider adding:
-- a `--daemon` mode, 
-- an IOCTL interface for readback and events, and 
-- a help screen (`--help`) documenting new options.
