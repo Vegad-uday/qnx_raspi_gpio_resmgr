@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <devctl.h>
-#include <string.h>
 #include <errno.h>
 
 #define GPIO_MIN 2
@@ -19,60 +18,100 @@ struct gpio_info{
 #define MSG_COMD __DIOT(_DCMD_MISC, 1, struct gpio_info)
 
 
-    int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
+
+	gpio.mode = 2;
+	gpio.state = 2;
+	int check_arg_p;
+	int check_arg_o;
+	int check_arg_i;
+	int check_arg_s;
 
     int fd = open("/dev/rpi_gpio", O_RDWR);
     if (fd == -1) {
-        printf("ERROR IN FILE OPEN\n");
-        return 1;
+        printf("ERROR FILE OPENING\n");
+        return ENOENT;
     }
     for (int i=1; i<argc; i++) {
-
-    	switch (argv[i][0]){
-    		case 'p':
-    			gpio.pin = atoi(&argv[i][1]);
-    			if (!(gpio.pin > 1 || gpio.pin > 28) ) {
-    			    printf("Argument %s Invalid\n",argv[i]);
-    			    return 1;
-    			}
-    			break;
-    		case 'm':
-    			printf("PRINT MODE\n");
-    			gpio.mode = atoi(&argv[i][1]);
-    			printf("mode %d",gpio.mode);
-    			if (!(gpio.mode == 0 || gpio.mode ==1) ) {
-    			    printf("Argument %s Invalid\n",argv[i]);
-    			    return 1;
-    			}
-    			break;
-    		case 's':
-    			printf("PRINT STATE\n");
-    			gpio.state = atoi(&argv[i][1]);
-    			if (!(gpio.state == 0 || gpio.state == 1) ) {
-    			    printf("Argument %s Invalid\n",argv[i]);
-    			    return 1;
-    			}
-			break;
-    		case 'r':
-    			printf("PRINT READ\n");
-    			gpio.state_read = atoi(&argv[i][1]);
-    			if (!(gpio.state_read == 0 || gpio.state_read == 1)) {
-    			    printf("Argument %s Invalid\n",argv[i]);
-    			    return 1;
-    			}
-    			break;
-    		default :
-    			printf("Arguments %d are Invalid\n",i);
-    			return 2;
+    	if (argv[i][0] == '-') {
+    		switch (argv[i][1]) {
+    			case 'p':
+    					check_arg_p =1;
+    					gpio.pin = atoi(&argv[i][2]);
+    					if (gpio.pin < GPIO_MIN || gpio.pin > GPIO_MAX ) {
+    					    printf("Argument -p is Invalid\n");
+    					    return EINVAL;
+    					}
+    					break;
+    			case 'i':
+    					gpio.mode = 0;
+    					check_arg_i =1;
+    					break;
+    			case 'o':
+    					gpio.mode = 1;
+    					check_arg_o =1;
+    					break;
+    			case 's':
+    					gpio.state = atoi(&argv[i][2]);
+    					if (!(gpio.state == 0 || gpio.state == 1) ) {
+    						printf("Argument %s is Invalid\n",argv[i]);
+    						return EINVAL;
+    					}
+    					check_arg_s =1;
+    					break;
+    			case 'r':
+    					gpio.state_read =1;
+    					if (!( gpio.state_read == 1 )) {
+    						printf("Argument %s is Invalid\n",argv[i]);
+    						return EINVAL;
+    					}
+    					break;
+    			default :
+    					printf("Arguments %d is Invalid\n",i);
+    					return EINVAL;
+    		}
     	}
+    }
+    if (!(check_arg_p == 1) ){
+    	printf("Argument -p Missing\n");
+    	return EINVAL;
+    }
+    if (check_arg_p == 1 && !(gpio.mode == 0 || gpio.mode ==1 )) {
+    	printf("Pin mode not set \n");
+    	return EINVAL;
+    }
+    if (check_arg_s == 1 && !(check_arg_o  == 1)) {
+    	printf("Argument -s required -o\n");
+    	return EINVAL;
+    }
+    if (!(check_arg_s == 1) && check_arg_o ==1) {
+    	printf("Argument -o required -s\n");
+    	return EINVAL;
+    }
+//    if (!(gpio.mode == 0)) {
+//    	if (!(gpio.mode == 1 && (gpio.state == 0 || gpio.state ==1 ))) {
+//    		printf("Argument -o and -s not  \n");
+//        	return EIO;
+//     	}
+//     }
+    if (gpio.mode == 1 && gpio.state_read == 1) {
+    	printf("Argument -o not use with -r\n");
+    	return EPERM;
+    }
+    if (gpio.mode == 0 && (gpio.state == 0 || gpio.state == 1)) {
+    	printf("Argument -i not use with -s\n");
+    	return EPERM;//not opration permission
+    }
+    if (check_arg_i == 1 && check_arg_o ==1){
+    	printf("input and output both mode not set at time\n");
+    	return EIO;
     }
 
     int ret = devctl(fd, MSG_COMD, &gpio, sizeof(struct gpio_info), NULL);
 
-    printf("Send vleue\n");
     if (ret != 0) {
         printf("devctl failed\n");
-        return 3;
+        return ENOTTY;
     }
 
     close(fd);

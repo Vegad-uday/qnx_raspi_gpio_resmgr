@@ -1,9 +1,8 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <devctl.h>
 #include <sys/iofunc.h>
 #include <sys/dispatch.h>
@@ -11,13 +10,9 @@
 
 
 #define BCM2711_GPIO_BASE                   0xfe200000
-#define GPFSEL1   1
 #define GPSET0    7
 #define GPLEV0	(0x34/4)
-#define GPLEV1	(0x38/4)
 #define GPCLR0    (0x28/4)
-#define GPIO_MIN	2
-#define GPIO_MAX	27
 #define BLOCK_SIZE	(4*1024)
 #define GPIO_SR		0x07
 #define OP	1
@@ -31,8 +26,9 @@ struct gpio_info{
 	int state_read;
 }gpio;
 
-#define MSG_COMD __DIOT(_DCMD_MISC, 1, struct gpio_info)
 static uint32_t volatile *gpio_base;
+
+#define MSG_COMD __DIOT(_DCMD_MISC, 1, struct gpio_info)
 
 static int set_gpio_input(int gpio_pin);
 static int set_gpio_output(int gpio_pin);
@@ -95,7 +91,6 @@ int main(int argc, char *argv[]) {
 
 //function for set gpio as input output
 static int set_gpio_input(int gpio_pin) {
-
     int reg = gpio_pin / 10;
     int sel = gpio_pin % 10;
     int val = *(gpio_base + reg );
@@ -125,28 +120,27 @@ static int set_gpio_state(int gpio_pin , int state) {
 
     if (state != 0) {
     	*(gpio_base + GPSET0) = (uint32_t)(0x1 << gpio_pin);
-    	printf("PIN %d SET as OUTPUt HIGH\n",gpio_pin);
+    	printf("PIN %d SET OUTPUt HIGH\n",gpio_pin);
     }
     else {
     	*(gpio_base + GPCLR0) = (uint32_t)(0x1 << gpio_pin);
-    	printf("PIN %d SET as OUTPUT LOW\n",gpio_pin);
+    	printf("PIN %d SET OUTPUT LOW\n",gpio_pin);
     }
     return 0;
 }
 
 //function for gpio read
 static int gpio_read_func(int gpio_pin){
-    int gpio_level =*(gpio_base + GPLEV0);
-    gpio_level &= (1 << gpio_pin);
-    if (gpio_level == 0) {
-
-	 printf("PIN %d is LOW\n",gpio_pin);
-	 return 0;
-    }
-    else {
-	printf("PIN %d is HIGH\n",gpio_pin);
-	return 0;
-    }
+	int gpio_level =*(gpio_base + GPLEV0);
+	gpio_level &= (1 << gpio_pin);
+	if (gpio_level == 0) {
+		printf("PIN %d is LOW\n",gpio_pin);
+		return 0;
+	}
+	else {
+		printf("PIN %d is HIGH\n",gpio_pin);
+		return 0;
+	}
 }
 
 
@@ -156,43 +150,38 @@ static int my_devctl_handler(resmgr_context_t *ctp, io_devctl_t *msg, RESMGR_OCB
     switch (msg->i.dcmd) {
         case MSG_COMD:
 
-            printf("Message recived \n");
-
             resmgr_msgread(ctp, &gpio, sizeof(struct gpio_info), sizeof(msg->i));
-
-            printf("Received gpio_info: pin=%d, mode=%d, state=%d, state_read=%d\n",gpio.pin, gpio.mode, gpio.state, gpio.state_read);
-
 
             if (gpio.mode == 0) {
             	set_gpio_input(gpio.pin);
             	if (gpio.state_read == 1) {
-            	    gpio_read_func(gpio.pin);
+            		gpio_read_func(gpio.pin);
             	}
             	else if (gpio.state_read == 0) {
-            	    printf("pin state not read \n");
+            		printf("PIN %d SET INPUT \n",gpio.pin);
             	} else {
-            	    printf("Invalid opration\n");
-            	    return 1;
+            		printf("Invalid opration of GPIO\n");
+            		return EIO;
             	}
             }
             else if (gpio.mode == 1 ) {
             	set_gpio_output(gpio.pin);
             	if (gpio.state == 0) {
-            	    set_gpio_state(gpio.pin, gpio.state);
+            		set_gpio_state(gpio.pin, gpio.state);
             	}
             	else if (gpio.state == 1) {
-            	    set_gpio_state(gpio.pin, gpio.state);
+            		set_gpio_state(gpio.pin, gpio.state);
             	}
             	else {
-            	    printf("Invalid opration state\n");
-            	    return 1;
+            		printf("Invalid opration of GPIO\n");
+            		return EIO;
             	}
             }
             break;
 
         default:
-        	printf("wrong arument");
-                return 1;
+        	printf("wrong Argumrnt\n");
+            return EINVAL;
     }
 
     return 0;
